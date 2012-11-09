@@ -1,0 +1,148 @@
+<!doctype html>
+<html>
+<head>
+<script src="http://ajax.googleapis.com/ajax/libs/prototype/1.7.1.0/prototype.js" type="text/javascript"></script>
+<script src="watersim-util.js" type="text/javascript"></script>
+<script src="watersim-Cell.js" type="text/javascript"></script>
+<script src="watersim-World.js" type="text/javascript"></script>
+<link rel="stylesheet" href="html5reset-1.6.1.css" \>
+<style>
+canvas { border: 1px solid #ccc;}
+#speed { width: 3em;}
+</style>
+<title>Water Sim</title>
+</head>
+<body>
+<p>left click for ground, middle click for water, and right click for air (erase)</p>
+<canvas id="grid" width="600" height="600"></canvas>
+<div>
+	<button id='step'>step</button>
+	<button id='play'>play</button>
+	<button id='pause'>pause</button>
+	<label for'speed'>Update Speed: </label><input id="speed" maxlength='3' value='25'/>
+	<button id='clear'>clear</button>
+</div>
+<div id="log"></div>
+<script type="text/javascript">
+var WIDTH = 15;
+var HEIGHT = 15;
+var GRID = 40;
+
+var MaxMass = 1.0; //full cell of water
+var MaxCompress = 0.02; //excess water a cell can store when compressed
+var MinWater = 0.001; // if a cell has only this much water, the water "evaporates"
+var MinFlow = 0.01;
+var MaxSpeed = 1.0; //max amount of water that can move out of one cell in a generation
+
+function log(msg) {
+	$("log").innerHTML += "<p>" + msg + "</p>";
+}
+
+var theWorld = new World( WIDTH, HEIGHT, $("grid").getContext('2d') );
+theWorld.draw();
+
+var animation;
+
+function update() {
+	theWorld.tick();
+	theWorld.draw();
+}
+
+$("step").observe("click", function (e) {
+	update();
+	Event.stop(e);
+});
+
+$("play").observe("click", function (e) {
+	if( animation ) {
+		clearInterval( animation );
+	}
+	animation = setInterval( update, parseInt($("speed").value) );
+});
+
+$("pause").observe("click", function (e) {
+	if( animation ) {
+		clearInterval( animation );
+		animation = false;
+	}
+});
+
+$("speed").observe("blur", function (e) {
+	if( animation ) {
+		clearInterval( animation );
+		animation = setInterval( update, parseInt($("speed").value) );
+	}
+});
+
+$("clear").observe("click", function (e) {
+	theWorld.clear();
+	theWorld.draw();
+});
+
+$("grid").observe("mousedown", function (e) {
+	if( e.isLeftClick() ) {
+		addCell(e);
+		e.element().observe("mousemove", addCell );
+	}
+	if( e.isRightClick() ) {
+		removeCell(e);
+		e.element().observe("mousemove", removeCell );
+	}
+	if( e.isMiddleClick() ) {
+		addWater(e);
+		e.element().observe("mousemove", addWater );
+	}
+	Event.stop(e);
+});
+
+$("grid").observe("mouseup", function (e) {
+	e.element().stopObserving("mousemove");
+	Event.stop(e);
+});
+
+
+$("grid").observe("mouseout", function (e) {
+	e.element().stopObserving("mousemove");
+});
+
+function addCell(e) {
+	var grid = e.element().getLayout();
+	var x = Math.floor((e.pointerX() - grid.get("left"))/GRID);
+	var y = Math.floor((e.pointerY() - grid.get("top"))/GRID);
+	if( x >= WIDTH || y >= HEIGHT ) {
+		e.element().stopObserving("mousemove");
+		return;
+	}
+	//log( "adding ground at "+x+","+y+"...");
+	theWorld.pieces[x][y].setGround();
+	theWorld.draw();
+	
+}
+function removeCell(e) {
+	var grid = e.element().getLayout();
+	var x = Math.floor((e.pointerX() - grid.get("left"))/GRID);
+	var y = Math.floor((e.pointerY() - grid.get("top"))/GRID);
+		if( x >= WIDTH || y >= HEIGHT ) {
+		e.element().stopObserving("mousemove");
+		return;
+	}
+	theWorld.pieces[x][y].clear();
+	theWorld.draw();
+
+}
+function addWater(e) {
+	var grid = e.element().getLayout();
+	var x = Math.floor((e.pointerX() - grid.get("left"))/GRID);
+	var y = Math.floor((e.pointerY() - grid.get("top"))/GRID);
+		if( x >= WIDTH || y >= HEIGHT ) {
+		e.element().stopObserving("mousemove");
+		return;
+	}
+	theWorld.pieces[x][y].setWater();
+	theWorld.draw();
+}
+
+$("grid").observe("contextmenu", Event.stop);
+</script>
+</body>
+</html>
